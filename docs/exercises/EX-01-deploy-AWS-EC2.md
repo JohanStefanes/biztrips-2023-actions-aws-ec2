@@ -10,6 +10,8 @@ Nach dieser Übung könnt ihr:
 - die für den Deploy-Job nötigen **Secrets** und **Variables** in GitHub konfigurieren
 - einen Workflow-Run beobachten, Fehler lesen und gezielt beheben
 
+> **Startpunkt:** Für die eigene Übung vom Tag [`v1-start`](https://github.com/bbwlc/biztrips-2023-actions-aws-ec2/releases/tag/v1-start) ausgehen — `deploy.yml` enthält dort nur die Jobs `test` und `build`, der `deploy`-Job fehlt noch. Die hier beschriebene, fertige Pipeline (inkl. `deploy`-Job) entspricht dem Tag [`v1-solution`](https://github.com/bbwlc/biztrips-2023-actions-aws-ec2/releases/tag/v1-solution) bzw. dem aktuellen Stand von `main`.
+
 ## Voraussetzungen
 
 - Ein GitHub-Account mit Zugriff (push-Recht) auf das Ziel-Repository

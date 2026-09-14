@@ -10,6 +10,8 @@ Nach dieser Übung könnt ihr:
 - ein Image auf Docker Hub pushen und wieder herunterladen
 - den Container lokal starten und testen
 
+> **Startpunkt:** Schritte 1–8 (lokaler Docker-Workflow) sind unabhängig vom Stand der Pipeline. Für Schritt 9 (Integration als `docker`-Job) vom Tag [`v1-start`](https://github.com/bbwlc/biztrips-2023-actions-aws-ec2/releases/tag/v1-start) ausgehen — dort fehlt der `docker`-Job noch. Die fertige Referenzlösung mit `docker`-Job entspricht dem Tag [`v1-solution`](https://github.com/bbwlc/biztrips-2023-actions-aws-ec2/releases/tag/v1-solution) bzw. dem aktuellen Stand von `main`.
+
 ## Voraussetzungen
 
 - Docker Desktop (oder Docker Engine) lokal installiert und gestartet: `docker --version`
