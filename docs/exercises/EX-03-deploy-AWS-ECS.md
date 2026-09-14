@@ -11,6 +11,8 @@ Nach dieser Übung könnt ihr:
 - eine GitHub-Actions-Pipeline schreiben, die bei jedem Push auf `main` ein neues Image baut, nach ECR pusht und den ECS-Service aktualisiert (Rolling Deployment)
 - AWS-Zugangsdaten per OIDC (statt langlebiger Access Keys) an GitHub Actions vergeben
 
+> **Startpunkt:** Diese Übung baut auf dem `docker`-Job aus EX-02 auf, daher vom Tag [`v1-solution`](https://github.com/bbwlc/biztrips-2023-actions-aws-ec2/releases/tag/v1-solution) (bzw. aktuellem Stand von `main`) ausgehen — dort sind `test`, `build`, `deploy` und `docker` bereits vorhanden. Der Tag [`v1-start`](https://github.com/bbwlc/biztrips-2023-actions-aws-ec2/releases/tag/v1-start) reicht hier **nicht**, da ihm auch `deploy` und `docker` fehlen. Anders als bei EX-01/EX-02 gibt es für den `deploy-ecs`-Job in diesem Repository (noch) keine fertige Referenzlösung — der Code in Schritt 7 ist rein instruktiv, zum selbst Ergänzen.
+
 ## Voraussetzungen
 
 - Abgeschlossene [EX-02](./EX-02-create-Docker-Image-DockerHub.md) — das Repository enthält bereits ein funktionierendes `Dockerfile`, `.dockerignore` und `nginx.conf`
