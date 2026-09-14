@@ -27,6 +27,11 @@ Bei Bedarf zum Vergleich die Lösung ansehen:
 git diff v1-start v1-solution -- .github/workflows/deploy.yml
 ```
 
+> Für [EX-03](docs/exercises/EX-03-deploy-AWS-ECS.md) (ECS/Fargate) gibt es
+> bewusst **keinen** `v1-ecs`-Tag oder -Branch: Der `deploy-ecs`-Job dort ist
+> rein instruktiv und soll selbst auf Basis von `v1-solution` ergänzt werden,
+> es existiert (noch) keine fertige Referenzlösung im Repository.
+
 ## Voraussetzungen
 
 - Node.js 24 oder neuer
