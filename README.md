@@ -8,6 +8,25 @@ Fortsetzung (Spring-Boot-Backend, Storage, Fullstack auf AWS) ist in
 [`docs/future/RefCard-03-RefCard-05-own-repos.md`](docs/future/RefCard-03-RefCard-05-own-repos.md)
 festgehalten.
 
+## Tags für Studierende
+
+| Tag | Inhalt |
+| --- | --- |
+| [`v1-start`](https://github.com/bbwlc/biztrips-2023-actions-aws-ec2/releases/tag/v1-start) | Startpunkt für die Übungen: `deploy.yml` enthält nur die Jobs `test` und `build`. Die Jobs `deploy` (EX-01) und `docker` (EX-02) fehlen und sind selbst zu ergänzen. |
+| [`v1-solution`](https://github.com/bbwlc/biztrips-2023-actions-aws-ec2/releases/tag/v1-solution) | Referenzlösung (Stand `main`): vollständige Pipeline mit `test`, `build`, `deploy` (EC2) und `docker` (Docker Hub). |
+
+Mit dem Startpunkt arbeiten:
+
+```bash
+git checkout v1-start
+```
+
+Bei Bedarf zum Vergleich die Lösung ansehen:
+
+```bash
+git diff v1-start v1-solution -- .github/workflows/deploy.yml
+```
+
 ## Voraussetzungen
 
 - Node.js 24 oder neuer
