@@ -29,7 +29,8 @@ echo "== Log-Group"
 aws logs create-log-group --log-group-name /ecs/biztrips 2>/dev/null || true
 
 echo "== Schritt 3: ECS-Cluster"
-aws ecs create-cluster --cluster-name "$CLUSTER" >/dev/null
+[ "$(aws ecs describe-clusters --clusters "$CLUSTER" --query 'clusters[0].status' --output text)" = "ACTIVE" ] \
+  || aws ecs create-cluster --cluster-name "$CLUSTER" >/dev/null
 
 echo "== Schritt 4: Netzwerk, Security Groups, ALB, Target Group"
 VPC_ID=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query 'Vpcs[0].VpcId' --output text)
@@ -52,9 +53,11 @@ SG_TASKS=$(sg biztrips-tasks-sg "biztrips Fargate-Tasks: HTTP nur vom ALB")
 aws ec2 authorize-security-group-ingress --group-id "$SG_ALB" --protocol tcp --port 80 --cidr 0.0.0.0/0 >/dev/null 2>&1 || true
 aws ec2 authorize-security-group-ingress --group-id "$SG_TASKS" --protocol tcp --port 80 --source-group "$SG_ALB" >/dev/null 2>&1 || true
 
-TG_ARN=$(aws elbv2 create-target-group --name biztrips-tg --protocol HTTP --port 80 --vpc-id "$VPC_ID" \
+TG_ARN=$(aws elbv2 describe-target-groups --names biztrips-tg --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null) \
+  || TG_ARN=$(aws elbv2 create-target-group --name biztrips-tg --protocol HTTP --port 80 --vpc-id "$VPC_ID" \
   --target-type ip --health-check-path / --query 'TargetGroups[0].TargetGroupArn' --output text)
-ALB_ARN=$(aws elbv2 create-load-balancer --name biztrips-alb --subnets "$SUBNET_A" "$SUBNET_B" \
+ALB_ARN=$(aws elbv2 describe-load-balancers --names biztrips-alb --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null) \
+  || ALB_ARN=$(aws elbv2 create-load-balancer --name biztrips-alb --subnets "$SUBNET_A" "$SUBNET_B" \
   --security-groups "$SG_ALB" --scheme internet-facing --type application \
   --query 'LoadBalancers[0].LoadBalancerArn' --output text)
 aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query 'Listeners[0]' --output text | grep -q . \
