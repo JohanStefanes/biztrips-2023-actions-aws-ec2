@@ -60,7 +60,7 @@ ALB_ARN=$(aws elbv2 describe-load-balancers --names biztrips-alb --query 'LoadBa
   || ALB_ARN=$(aws elbv2 create-load-balancer --name biztrips-alb --subnets "$SUBNET_A" "$SUBNET_B" \
   --security-groups "$SG_ALB" --scheme internet-facing --type application \
   --query 'LoadBalancers[0].LoadBalancerArn' --output text)
-aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query 'Listeners[0]' --output text | grep -q . \
+[ "$(aws elbv2 describe-listeners --load-balancer-arn "$ALB_ARN" --query 'length(Listeners)' --output text)" != "0" ] \
   || aws elbv2 create-listener --load-balancer-arn "$ALB_ARN" --protocol HTTP --port 80 \
        --default-actions Type=forward,TargetGroupArn="$TG_ARN" >/dev/null
 ALB_DNS=$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --query 'LoadBalancers[0].DNSName' --output text)
