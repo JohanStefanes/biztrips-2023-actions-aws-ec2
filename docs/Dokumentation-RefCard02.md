@@ -90,7 +90,7 @@ deshalb der dokumentierte Fallback: `LabRole` als Execution Role und temporäre 
 
 ![EX-03 Workflow-Run](img/ex03-workflow.png)
 ![EX-03 ECS-Service mit 2 Tasks](img/ex03-ecs-service.png)
-![EX-03 Website über ALB](img/ex03-website-alb.png)
+![EX-03 Website über ALB](img/ex03-website-alb.jpg)
 
 ### Reflexionsfragen
 
