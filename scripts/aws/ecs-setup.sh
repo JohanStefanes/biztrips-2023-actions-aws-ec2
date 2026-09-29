@@ -70,12 +70,16 @@ sed -e "s/AWS_ACCOUNT_ID/$ACCOUNT_ID/g" -e "s/AWS_REGION/$REGION/g" task-definit
 aws ecs register-task-definition --cli-input-json file:///tmp/biztrips-taskdef.json >/dev/null
 
 echo "== Schritt 6: ECS-Service"
+NETWORK="awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_TASKS],assignPublicIp=ENABLED}"
+LB="targetGroupArn=$TG_ARN,containerName=biztrips,containerPort=80"
 STATUS=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --query 'services[0].status' --output text 2>/dev/null || echo None)
 if [ "$STATUS" != "ACTIVE" ]; then
   aws ecs create-service --cluster "$CLUSTER" --service-name "$SERVICE" --task-definition biztrips \
-    --desired-count 2 --launch-type FARGATE \
-    --network-configuration "awsvpcConfiguration={subnets=[$SUBNET_A,$SUBNET_B],securityGroups=[$SG_TASKS],assignPublicIp=ENABLED}" \
-    --load-balancers "targetGroupArn=$TG_ARN,containerName=biztrips,containerPort=80" >/dev/null
+    --desired-count 2 --launch-type FARGATE --network-configuration "$NETWORK" --load-balancers "$LB" >/dev/null
+else
+  # Bestehenden Service (z. B. aus einem früheren Versuch) auf diese Konfiguration umstellen.
+  aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition biztrips \
+    --desired-count 2 --network-configuration "$NETWORK" --load-balancers "$LB" --force-new-deployment >/dev/null
 fi
 echo "Warte, bis der Service stabil ist ..."
 aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
