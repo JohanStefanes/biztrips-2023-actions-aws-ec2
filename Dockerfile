@@ -12,8 +12,12 @@ COPY . .
 # Vite kompiliert diese Werte fest in das JS-Bundle ein, daher als Build-ARG (nicht als Runtime-ENV).
 ARG VITE_API_BASE_URL
 ARG VITE_IMGS=items
+ARG VITE_BUILD_SHA=docker-local
+ARG VITE_DEPLOY_TARGET=docker
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 ENV VITE_IMGS=$VITE_IMGS
+ENV VITE_BUILD_SHA=$VITE_BUILD_SHA
+ENV VITE_DEPLOY_TARGET=$VITE_DEPLOY_TARGET
 RUN npm run build
 
 # --- Stage 2: Runtime ---

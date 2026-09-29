@@ -70,6 +70,11 @@ Im Code werden sie über `import.meta.env.VITE_API_BASE_URL` gelesen.
 
 ## CI/CD-Pipeline
 
+> Meine Umsetzung von EX-01 bis EX-03 inkl. Screenshots und Reflexion:
+> [`docs/Dokumentation-RefCard02.md`](docs/Dokumentation-RefCard02.md).
+> Zusätzlich gibt es die Jobs `docker` (Docker Hub) und `deploy-ecs` (ECR → ECS/Fargate),
+> AWS-Setup-Skripte liegen unter `scripts/aws/`.
+
 Die Pipeline liegt in `.github/workflows/deploy.yml` und besteht aus drei Jobs:
 
 1. **test** – `npm ci` und `npm test` (Vitest)

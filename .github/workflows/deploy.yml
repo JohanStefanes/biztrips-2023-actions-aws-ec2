@@ -9,6 +9,10 @@ on:
 
 env:
   NODE_VERSION: '24'
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  ECR_REPOSITORY: biztrips
+  ECS_CLUSTER: biztrips-cluster
+  ECS_SERVICE: biztrips-service
 
 jobs:
   test:
@@ -44,10 +48,13 @@ jobs:
         run: npm ci
 
       - name: Produktions-Build erstellen
-        run: npm run build
+        run: |
+          export VITE_BUILD_SHA="${GITHUB_SHA::7}"
+          npm run build
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           VITE_IMGS: ${{ vars.VITE_IMGS || 'items' }}
+          VITE_DEPLOY_TARGET: ec2
 
       - name: Build-Artefakt hochladen
         uses: actions/upload-artifact@v4
@@ -56,12 +63,17 @@ jobs:
           path: dist/
           retention-days: 7
 
+  # EX-01: statische Dateien per rsync/SSH auf eine EC2-Instanz mit nginx.
+  # Läuft nur, wenn die Repository-Variable ENABLE_EC2_DEPLOY=true gesetzt ist
+  # (Learner-Lab-Instanzen sind nicht dauerhaft verfügbar).
   deploy:
     name: Deploy auf EC2
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    environment: production
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ENABLE_EC2_DEPLOY == 'true'
+    environment:
+      name: production
+      url: http://${{ vars.EC2_PUBLIC_HOST }}
     steps:
       - name: Build-Artefakt herunterladen
         uses: actions/download-artifact@v4
@@ -71,6 +83,10 @@ jobs:
 
       - name: SSH-Key einrichten
         run: |
+          if [ -z "${{ secrets.EC2_HOST }}" ] || [ -z "${{ secrets.EC2_SSH_KEY }}" ]; then
+            echo "::error::Secrets EC2_HOST / EC2_USER / EC2_SSH_KEY fehlen (Settings → Secrets → Actions)."
+            exit 1
+          fi
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
@@ -97,13 +113,20 @@ jobs:
         if: always()
         run: rm -f ~/.ssh/deploy_key
 
+  # EX-02: Multi-Stage-Image bauen und auf Docker Hub veröffentlichen.
+  # Erweiterung: nur Änderungen auf main landen auf Docker Hub (bei PRs läuft der Job nicht).
+  # Schalter ENABLE_DOCKERHUB_PUSH=true wird von scripts/set-github-config.sh dockerhub gesetzt.
   docker:
     name: Docker-Image bauen und auf Docker Hub veröffentlichen
     runs-on: ubuntu-latest
-    needs: deploy
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ENABLE_DOCKERHUB_PUSH == 'true'
     steps:
       - uses: actions/checkout@v4
+
+      - name: Kurz-SHA bestimmen
+        id: vars
+        run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - name: Bei Docker Hub anmelden
         uses: docker/login-action@v3
@@ -124,7 +147,76 @@ jobs:
           build-args: |
             VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
             VITE_IMGS=${{ vars.VITE_IMGS || 'items' }}
+            VITE_BUILD_SHA=${{ steps.vars.outputs.short_sha }}
+            VITE_DEPLOY_TARGET=dockerhub
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/biztrips:prod01
             ${{ secrets.DOCKERHUB_USERNAME }}/biztrips:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/biztrips:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/biztrips:${{ steps.vars.outputs.short_sha }}
+
+  # EX-03: Image nach ECR pushen und ECS-Service (Fargate) per Rolling Deployment aktualisieren.
+  # AWS Academy Learner Lab erlaubt kein OIDC/CreateRole → temporäre Lab-Zugangsdaten als Secrets.
+  # Läuft nur mit ENABLE_ECS_DEPLOY=true (Infrastruktur via scripts/aws/ecs-setup.sh).
+  deploy-ecs:
+    name: Image nach ECR pushen und ECS-Service aktualisieren
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.ENABLE_ECS_DEPLOY == 'true'
+    environment:
+      name: ecs
+      url: http://${{ vars.ECS_ALB_DNS }}
+    permissions:
+      id-token: write   # nur für OIDC nötig, schadet beim Learner-Lab-Fallback nicht
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: AWS-Credentials aus Learner-Lab-Session beziehen
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Bei ECR anmelden
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Image bauen und nach ECR pushen
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          IMAGE_TAG="${GITHUB_SHA::7}"
+          docker build \
+            --build-arg VITE_API_BASE_URL="${{ vars.VITE_API_BASE_URL }}" \
+            --build-arg VITE_BUILD_SHA="$IMAGE_TAG" \
+            --build-arg VITE_DEPLOY_TARGET=ecs \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          echo "uri=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+
+      # task-definition.json enthält Platzhalter, damit keine Account-ID im Repo steht.
+      - name: Platzhalter in der Task-Definition ersetzen
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          sed -i -e "s/AWS_ACCOUNT_ID/$ACCOUNT_ID/g" -e "s/AWS_REGION/$AWS_REGION/g" task-definition.json
+
+      - name: Task-Definition mit neuem Image aktualisieren
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: biztrips
+          image: ${{ steps.image.outputs.uri }}
+
+      - name: ECS-Service deployen
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          wait-for-service-stability: true

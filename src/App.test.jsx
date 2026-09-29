@@ -63,3 +63,11 @@ test("adds 1 + 2 to equal 3", () => {
 test("two plus two is four", () => {
   expect(2 + 2).toBe(4);
 });
+
+//----
+test("footer shows RefCard02 build info", () => {
+  render(<App />);
+  expect(screen.getByTestId("build-info")).toHaveTextContent(
+    /RefCard02 – Johan Stefanes · Build \S+ · Target \S+/
+  );
+});
